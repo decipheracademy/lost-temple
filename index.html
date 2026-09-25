@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>The Lost Temple — Decipher Academy</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Crimson+Text:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --stone:#14110d;--stone2:#1e1912;--stone3:#2a2318;
+  --torch:#e8a13c;--torch2:#c17d1f;--torch3:#ffd280;
+  --moss:#7a9b68;--parchment:#e8dcc4;
+  --text:#ede4d3;--muted:#8a7d68;
+  --ok:#7fbf6a;--err:#d1503a;--warn:#e0a83c;
+}
+html{scroll-behavior:smooth}
+body{background:var(--stone);color:var(--text);font-family:'Crimson Text',serif;min-height:100vh;min-height:100dvh;overflow:hidden}
+
+/* Ambient carved-stone + torchlight backdrop, shared by every screen */
+body::before{
+  content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(ellipse 60% 40% at 20% 15%, rgba(232,161,60,.08) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 35% at 85% 80%, rgba(232,161,60,.06) 0%, transparent 60%),
+    radial-gradient(ellipse 70% 50% at 50% 100%, rgba(122,155,104,.04) 0%, transparent 70%);
+  animation:emberDrift 14s ease-in-out infinite alternate;
+}
+@keyframes emberDrift{0%{opacity:.7}100%{opacity:1}}
+body::after{
+  content:'';position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.5;
+  background-image:
+    repeating-linear-gradient(90deg, rgba(0,0,0,.15) 0px, transparent 2px, transparent 90px, rgba(0,0,0,.15) 92px),
+    repeating-linear-gradient(0deg, rgba(0,0,0,.12) 0px, transparent 2px, transparent 70px, rgba(0,0,0,.12) 72px);
+}
+.screen{position:relative;z-index:1;min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:1.5rem;text-align:center}
+.hidden{display:none !important}
+
+/* ═══ LOADER ═══ */
+#loader{gap:1.4rem}
+.torch-row{display:flex;gap:clamp(18px,6vw,34px)}
+.torch{width:clamp(28px,7vw,40px);height:clamp(44px,11vw,60px);position:relative}
+.torch-stick{position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:6px;height:60%;background:linear-gradient(#4a3a24,#2a2318);border-radius:2px}
+.torch-flame{position:absolute;top:0;left:50%;transform:translateX(-50%);width:22px;height:30px;border-radius:50% 50% 50% 50% / 60% 60% 40% 40%;background:radial-gradient(circle at 50% 70%, var(--torch3), var(--torch) 55%, var(--torch2) 85%);opacity:0;filter:blur(.3px)}
+.torch.lit .torch-flame{animation:ignite .6s ease forwards, flicker 1.8s ease-in-out .6s infinite}
+@keyframes ignite{0%{opacity:0;transform:translateX(-50%) scale(.3)}60%{opacity:1;transform:translateX(-50%) scale(1.15)}100%{opacity:1;transform:translateX(-50%) scale(1)}}
+@keyframes flicker{0%,100%{transform:translateX(-50%) scale(1) rotate(-1deg)}50%{transform:translateX(-50%) scale(1.06) rotate(1.5deg)}}
+.loader-title{font-family:'Cinzel',serif;font-size:clamp(20px,5.5vw,32px);font-weight:900;letter-spacing:3px;color:var(--torch);text-transform:uppercase}
+.loader-status{font-size:clamp(12px,3vw,14px);color:var(--muted);letter-spacing:1px;min-height:1.4em;font-style:italic}
+.loader-bar-track{width:min(280px,70vw);height:4px;background:var(--stone3);border-radius:3px;overflow:hidden}
+.loader-bar-fill{height:100%;width:0%;background:linear-gradient(90deg,var(--torch2),var(--torch));border-radius:3px;transition:width .4s ease}
+
+/* ═══ ENTRY POPUP ═══ */
+#entryScreen{display:none}
+.entry-card{background:var(--stone2);border:1px solid #3a2f1f;border-radius:18px;padding:clamp(1.6rem,5vw,2.6rem);max-width:420px;width:100%;box-shadow:0 0 0 1px rgba(232,161,60,.08), 0 20px 60px rgba(0,0,0,.5)}
+.entry-badge{font-family:'Cinzel',serif;font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--torch2);margin-bottom:.6rem}
+.entry-title{font-family:'Cinzel',serif;font-size:clamp(20px,5.5vw,26px);font-weight:900;color:var(--torch);letter-spacing:1.5px;margin-bottom:.5rem}
+.entry-sub{font-size:clamp(13px,3.2vw,15px);color:var(--muted);line-height:1.7;margin-bottom:1.5rem}
+.field-group{text-align:left;margin-bottom:1.1rem}
+.field-label{font-family:'Cinzel',serif;font-size:10.5px;letter-spacing:1.5px;text-transform:uppercase;color:var(--torch2);margin-bottom:.5rem;display:block}
+.field-input,.field-select{width:100%;background:var(--stone3);border:1.5px solid #3a2f1f;border-radius:10px;padding:12px 14px;color:var(--text);font-family:'Crimson Text',serif;font-size:16px;outline:none;transition:border-color .2s}
+.field-input:focus,.field-select:focus{border-color:var(--torch2)}
+.field-select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%238a7d68' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center}
+.begin-btn{width:100%;background:linear-gradient(135deg,var(--torch3),var(--torch));color:#1a1000;border:none;border-radius:11px;padding:14px;font-family:'Cinzel',serif;font-size:14px;font-weight:700;letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:all .2s;margin-top:.3rem}
+.begin-btn:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(232,161,60,.3)}
+.begin-btn:disabled{opacity:.4;cursor:not-allowed;transform:none;box-shadow:none}
+.entry-fb{font-size:12.5px;margin-top:.6rem;padding:8px 10px;border-radius:7px;display:none;text-align:left}
+.entry-fb.show{display:block}
+.entry-fb.err{background:#2d1310;color:#f3a08e;border:1px solid #7a2e1f}
+
+/* ═══ BRIEFING (cinematic panels) ═══ */
+#briefingScreen{display:none;padding:0}
+.briefing-stage{position:relative;z-index:1;width:100%;height:100vh;height:100dvh;display:flex;align-items:center;justify-content:center;padding:1.5rem}
+.panel{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:2rem 1.5rem;gap:1rem}
+.panel.active{display:flex;animation:panelIn 1s ease both}
+@keyframes panelIn{from{opacity:0;transform:translateY(16px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
+.panel-eyebrow{font-family:'Cinzel',serif;font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--torch2)}
+.panel-title{font-family:'Cinzel',serif;font-weight:900;color:var(--torch);letter-spacing:2px;line-height:1.25}
+.panel-title.xl{font-size:clamp(26px,7.5vw,46px)}
+.panel-title.lg{font-size:clamp(19px,5vw,28px)}
+.panel-body{font-size:clamp(14px,3.6vw,18px);color:var(--parchment);line-height:1.85;max-width:520px;font-style:italic}
+.panel-warn{font-size:clamp(13px,3.3vw,15px);color:var(--warn);line-height:1.8;max-width:480px;background:rgba(224,168,60,.08);border:1px solid rgba(224,168,60,.3);border-radius:10px;padding:14px 18px;margin-top:.3rem}
+.seal-preview-row{display:flex;gap:10px;margin-top:.5rem;flex-wrap:wrap;justify-content:center}
+.seal-chip{font-family:'Cinzel',serif;font-size:11px;letter-spacing:1px;color:var(--torch);background:var(--stone3);border:1px solid #3a2f1f;border-radius:20px;padding:6px 14px}
+.player-callout{font-family:'Cinzel',serif;font-size:clamp(15px,4vw,19px);color:var(--torch3);margin-top:.3rem}
+
+.briefing-nav{position:fixed;bottom:0;left:0;right:0;z-index:5;display:flex;flex-direction:column;align-items:center;gap:14px;padding:1.2rem 1.5rem 1.6rem;background:linear-gradient(0deg, var(--stone) 40%, transparent)}
+.progress-dots{display:flex;gap:8px}
+.pdot{width:7px;height:7px;border-radius:50%;background:#3a2f1f;transition:all .3s}
+.pdot.on{background:var(--torch);width:20px;border-radius:4px}
+.briefing-controls{display:flex;gap:10px;align-items:center}
+.nav-btn{background:transparent;border:1.5px solid #3a2f1f;color:var(--muted);border-radius:10px;padding:10px 20px;font-family:'Cinzel',serif;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer;transition:all .2s}
+.nav-btn:hover{border-color:var(--torch2);color:var(--torch)}
+.nav-btn.skip{border-color:transparent}
+.start-clock-btn{background:linear-gradient(135deg,var(--torch3),var(--torch));color:#1a1000;border:none;border-radius:12px;padding:15px 34px;font-family:'Cinzel',serif;font-size:13px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;cursor:pointer;transition:all .2s;display:none;align-items:center;gap:10px}
+.start-clock-btn.show{display:inline-flex;animation:panelIn .6s ease .3s both}
+.start-clock-btn:hover{transform:translateY(-2px) scale(1.02);box-shadow:0 10px 30px rgba(232,161,60,.35)}
+
+@media(max-width:420px){
+  .briefing-controls{gap:6px}
+  .nav-btn{padding:9px 14px;font-size:10px}
+}
+@media(prefers-reduced-motion:reduce){
+  body::before{animation:none}
+  .torch.lit .torch-flame{animation:ignite .3s ease forwards}
+  .panel.active{animation:none}
+}
+</style>
+</head>
+<body>
+
+<!-- ═══ LOADER ═══ -->
+<div class="screen" id="loader">
+  <div class="torch-row">
+    <div class="torch" id="t1"><div class="torch-stick"></div><div class="torch-flame"></div></div>
+    <div class="torch" id="t2"><div class="torch-stick"></div><div class="torch-flame"></div></div>
+    <div class="torch" id="t3"><div class="torch-stick"></div><div class="torch-flame"></div></div>
+  </div>
+  <div class="loader-title">The Lost Temple</div>
+  <div class="loader-status" id="loaderStatus">Brushing away centuries of dust…</div>
+  <div class="loader-bar-track"><div class="loader-bar-fill" id="loaderBar"></div></div>
+</div>
+
+<!-- ═══ ENTRY POPUP ═══ -->
+<div class="screen" id="entryScreen">
+  <div class="entry-card">
+    <div class="entry-badge">Decipher Academy</div>
+    <div class="entry-title">Who Enters the Temple?</div>
+    <div class="entry-sub">Give your name to the ancient record, then choose your grade so the trials can be set to your level.</div>
+    <div class="field-group">
+      <label class="field-label" for="playerName">Your Name</label>
+      <input class="field-input" id="playerName" type="text" placeholder="Type your name…" maxlength="40" autocomplete="off">
+    </div>
+    <div class="field-group">
+      <label class="field-label" for="gradeSelect">Your Grade</label>
+      <select class="field-select" id="gradeSelect">
+        <option value="" disabled selected>Select your grade…</option>
+        <option value="gr12">Grade 1 &amp; 2</option>
+        <option value="gr34">Grade 3 &amp; 4</option>
+        <option value="gr56">Grade 5 &amp; 6</option>
+        <option value="gr78">Grade 7 &amp; 8 (JSS 1–2)</option>
+        <option value="gr910">Grade 9 &amp; 10 (JSS 3/SS 1)</option>
+        <option value="gr1112">Grade 11 &amp; 12 (SS 2–3)</option>
+      </select>
+    </div>
+    <div class="entry-fb" id="entryFb"></div>
+    <button class="begin-btn" onclick="beginBriefing()">Begin</button>
+  </div>
+</div>
+
+<!-- ═══ BRIEFING ═══ -->
+<div class="screen briefing-stage" id="briefingScreen">
+
+  <div class="panel" data-i="0">
+    <div class="panel-eyebrow">Decipher Academy · Skill Challenge Friday</div>
+    <div class="panel-title xl">THE LOST TEMPLE</div>
+    <div class="panel-body">Deep in the jungle, an ancient order of scholars sealed their greatest knowledge behind a set of trials — and left the temple to sleep.</div>
+  </div>
+
+  <div class="panel" data-i="1">
+    <div class="panel-eyebrow">The Awakening</div>
+    <div class="panel-title lg">The temple has opened its doors — but only for a moment.</div>
+    <div class="panel-body">Something has stirred it from its sleep. Ancient mechanisms are grinding back to life, and the entrance will not stay open forever.</div>
+  </div>
+
+  <div class="panel" data-i="2">
+    <div class="panel-eyebrow">The Trials</div>
+    <div class="panel-title lg" id="trialCountTitle">Loading…</div>
+    <div class="panel-body">Each trial you solve grants a <strong style="color:var(--torch)">Sacred Seal</strong>. Gather every seal to reveal the Final Sigil — the code that opens the way out.</div>
+    <div class="seal-preview-row" id="sealPreviewRow"></div>
+  </div>
+
+  <div class="panel" data-i="3">
+    <div class="panel-eyebrow">The Warning</div>
+    <div class="panel-title lg">Once the doors seal, they will not open again.</div>
+    <div class="panel-warn" id="timerWarnText">Loading…</div>
+  </div>
+
+  <div class="panel" data-i="4">
+    <div class="panel-eyebrow">Ready?</div>
+    <div class="panel-title lg">The ruins are waiting.</div>
+    <div class="player-callout" id="playerCallout">—</div>
+    <div class="panel-body">The moment you start the clock, there is no pausing and no turning back. Steady your mind, and enter.</div>
+  </div>
+
+  <div class="briefing-nav">
+    <div class="progress-dots" id="progressDots"></div>
+    <div class="briefing-controls" id="briefingControls">
+      <button class="nav-btn skip" onclick="skipToEnd()">Skip Story</button>
+      <button class="nav-btn" onclick="nextPanel()" id="nextBtn">Continue →</button>
+    </div>
+    <button class="start-clock-btn" id="startClockBtn" onclick="startClock()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      Start the Clock
+    </button>
+  </div>
+</div>
+
+<script>
+// ── GRADE CONFIG (trial count + timer, mirrors the build plan) ──
+const GRADE_META = {
+  gr12:  {label:'Grade 1 & 2',                trials:2, minutes:12},
+  gr34:  {label:'Grade 3 & 4',                trials:3, minutes:11},
+  gr56:  {label:'Grade 5 & 6',                trials:3, minutes:10},
+  gr78:  {label:'Grade 7 & 8 (JSS 1–2)',      trials:4, minutes:9},
+  gr910: {label:'Grade 9 & 10 (JSS 3/SS 1)',  trials:4, minutes:8},
+  gr1112:{label:'Grade 11 & 12 (SS 2–3)',     trials:5, minutes:7},
+};
+
+let selectedGrade = null;
+let playerName = '';
+
+// ── LOADER SEQUENCE ──
+const loaderSteps = [
+  'Brushing away centuries of dust…',
+  'Realigning the stone glyphs…',
+  'Listening for the old mechanisms…',
+  'The doors are opening…'
+];
+function runLoader(){
+  let i = 0;
+  const bar = document.getElementById('loaderBar');
+  const status = document.getElementById('loaderStatus');
+  const torches = [document.getElementById('t1'), document.getElementById('t2'), document.getElementById('t3')];
+  function step(){
+    if(i < torches.length) torches[i].classList.add('lit');
+    status.textContent = loaderSteps[i] || loaderSteps[loaderSteps.length-1];
+    bar.style.width = Math.min(100, (i+1) / loaderSteps.length * 100) + '%';
+    i++;
+    if(i <= loaderSteps.length){
+      setTimeout(step, 550);
+    } else {
+      setTimeout(()=>{
+        document.getElementById('loader').style.display = 'none';
+        document.getElementById('entryScreen').style.display = 'flex';
+      }, 350);
+    }
+  }
+  step();
+}
+
+// ── ENTRY POPUP ──
+function beginBriefing(){
+  const name = document.getElementById('playerName').value.trim();
+  const grade = document.getElementById('gradeSelect').value;
+  const fb = document.getElementById('entryFb');
+  if(!name){
+    fb.textContent = 'Please enter your name.'; fb.className = 'entry-fb show err';
+    document.getElementById('playerName').focus(); return;
+  }
+  if(!grade){
+    fb.textContent = 'Please select your grade.'; fb.className = 'entry-fb show err';
+    return;
+  }
+  playerName = name; selectedGrade = grade;
+  const meta = GRADE_META[grade];
+
+  document.getElementById('trialCountTitle').textContent = `${meta.trials} Trials stand between you and escape.`;
+  const sealRow = document.getElementById('sealPreviewRow');
+  sealRow.innerHTML = '';
+  for(let s=1; s<=meta.trials; s++) sealRow.innerHTML += `<div class="seal-chip">Seal ${s}</div>`;
+  document.getElementById('timerWarnText').textContent = `You will have ${meta.minutes} minutes once the clock starts. If time runs out before you escape, the temple seals — and you will not be given another attempt, win or lose.`;
+  document.getElementById('playerCallout').textContent = `Good luck, ${name}.`;
+
+  document.getElementById('entryScreen').style.display = 'none';
+  document.getElementById('briefingScreen').style.display = 'flex';
+  initBriefing();
+}
+
+// ── BRIEFING PANEL LOGIC ──
+let panelIndex = 0;
+const panels = () => Array.from(document.querySelectorAll('.panel'));
+function initBriefing(){
+  panelIndex = 0;
+  const dots = document.getElementById('progressDots');
+  dots.innerHTML = panels().map((_,i)=>`<div class="pdot" data-d="${i}"></div>`).join('');
+  showPanel(0);
+}
+function showPanel(i){
+  panels().forEach((p,idx)=>p.classList.toggle('active', idx===i));
+  document.querySelectorAll('.pdot').forEach((d,idx)=>d.classList.toggle('on', idx===i));
+  const isLast = i === panels().length - 1;
+  document.getElementById('nextBtn').style.display = isLast ? 'none' : 'inline-flex';
+  document.querySelector('.nav-btn.skip').style.display = isLast ? 'none' : 'inline-flex';
+  document.getElementById('startClockBtn').classList.toggle('show', isLast);
+}
+function nextPanel(){
+  if(panelIndex < panels().length - 1){ panelIndex++; showPanel(panelIndex); }
+}
+function skipToEnd(){
+  panelIndex = panels().length - 1;
+  showPanel(panelIndex);
+}
+
+// ── HANDOFF TO GRADE FILE ──
+function startClock(){
+  sessionStorage.setItem('temple_session', JSON.stringify({name: playerName, grade: selectedGrade, ts: Date.now()}));
+  window.location.href = `temple_${selectedGrade}.html`;
+}
+
+// ── BOOT ──
+runLoader();
+</script>
+</body>
+</html>

@@ -448,10 +448,14 @@ body::before{
       <div class="badge badge-active" id="badge1">Active</div>
     </div>
     <div class="stage-body">
-      <div class="inst">Tap a picture below, then tap the box where it belongs. Put all 4 pictures in the right order to light the path.</div>
+      <div class="inst">Tap a picture below, then tap the box where it belongs. Made a mistake? Tap a filled box to take the picture back out. Put all 4 pictures in the right order to light the path.</div>
       <div class="tile-bank" id="tileBank"></div>
       <div class="slot-row" id="tileSlots"></div>
-      <div style="display:flex;justify-content:flex-end;margin-top:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:14px">
+        <button class="btn btn-ghost btn-sm" onclick="clearTiles()">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+          Clear All
+        </button>
         <button class="btn" id="s1btn" onclick="checkStage1()" disabled>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
           Submit Trial 1
@@ -762,8 +766,20 @@ function pickTile(el,step){
   g1Picked={el,step};
 }
 function pickSlot(idx){
-  if(d1||gameLocked||!g1Picked) return;
+  if(d1||gameLocked) return;
   const slot=document.querySelectorAll('.tile-slot')[idx];
+  if(g1SlotData[idx]!==null){
+    // Slot already has a tile — tapping it removes that tile (undo)
+    const step=g1SlotData[idx];
+    const tileEl=document.querySelector('.tile[data-step="'+step+'"]');
+    if(tileEl) tileEl.classList.remove('placed');
+    g1SlotData[idx]=null;
+    slot.innerHTML='<span class="tile-slot-num">'+(idx+1)+'</span>';
+    slot.classList.remove('filled');
+    document.getElementById('s1btn').disabled = g1SlotData.some(v=>v===null);
+    return;
+  }
+  if(!g1Picked) return;
   g1SlotData[idx]=g1Picked.step;
   slot.innerHTML=`<span class="tile-slot-num">${idx+1}</span>${g1Picked.el.querySelector('svg').outerHTML}`;
   slot.classList.add('filled');
@@ -771,6 +787,17 @@ function pickSlot(idx){
   g1Picked.el.classList.remove('selected');
   g1Picked=null;
   document.getElementById('s1btn').disabled = g1SlotData.some(v=>v===null);
+}
+function clearTiles(){
+  if(d1||gameLocked) return;
+  g1SlotData=[null,null,null,null];
+  g1Picked=null;
+  document.querySelectorAll('.tile-slot').forEach((slot,idx)=>{
+    slot.innerHTML='<span class="tile-slot-num">'+(idx+1)+'</span>';
+    slot.classList.remove('filled');
+  });
+  document.querySelectorAll('.tile').forEach(t=>{t.classList.remove('placed');t.classList.remove('selected');});
+  document.getElementById('s1btn').disabled=true;
 }
 function checkStage1(){
   if(d1||gameLocked) return;
@@ -790,7 +817,7 @@ function checkStage1(){
     showFb('s1fb','Trial 1 complete — Seal '+seal1+' collected! Trial 2 unlocked.','ok');
     setTimeout(()=>{unlockCard('card2','badge2');document.getElementById('card2').scrollIntoView({behavior:'smooth',block:'start'});},800);
   }else{
-    showFb('s1fb','Not quite the right order — look again and try again.','hint');
+    showFb('s1fb','Not quite the right order — tap a picture in the boxes to remove it, then try again.','hint');
   }
 }
 
